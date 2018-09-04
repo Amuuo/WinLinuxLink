@@ -39,63 +39,31 @@ pthread_mutex_t mutx = PTHREAD_MUTEX_INITIALIZER;
 SOCKET keyboardSocket;
 SOCKET signalSocket;
 SOCKET mouseSocket;
-sockaddr_in svr;
+SOCKET keyboardListenSock;
+SOCKET signalListenSock;
+SOCKET mouseListenSock;
+
+sockaddr_in mouseSvr;
+sockaddr_in keyboardSvr;
+sockaddr_in signalSvr;
+
 int PORT{5600};
 int fd;
 
 
-void* receivingMouse();
-void  createSocket(SOCKET);
-void  setupProtocols(sockaddr_in*);
-void  connectSocket(SOCKET, sockaddr_in, char*);
-void  emit(uint16_t,uint16_t,int32_t);
-void* receivingKey();
-void* receivingSignal();
-void* receivingMouse();
-void  setupDrivers();
-void  setupKeyboardDriver();
-void  setupMouseDriver();
 
-
-
-//=================================================================
-//                            M A I N
-//=================================================================
-int main(int argc, char* argv[]) 
-{                                        
-  
-  system("clear");
-  
-  
-  setupDrivers();
-  
-
-  createSocket(keyboardSocket);
-  createSocket(mouseSocket);
-  createSocket(signalSocket);
-
-
-  setupProtocols(&svr);
- 
-    
-    
-  connectSocket(mouseSocket,    svr, "mouseSocket");
-  connectSocket(keyboardSocket, svr, "keyboardSocket");
-  connectSocket(signalSocket,   svr, "signalSocket");
-    
-    
-  pthread_create(&keyThread,    NULL, &receivingKey,    NULL);
-  pthread_create(&mouseThread,  NULL, &receivingMouse,  NULL);
-  pthread_create(&signalThread, NULL, &receivingSignal, NULL);
-  
-  
-  pthread_join(keyThread,    NULL);
-  pthread_join(signalThread, NULL);
-  pthread_join(mouseThread,  NULL);
-    
-  return 0;
-}//================================================================
-
+void setupSocketConnection(SOCKET listenSock, 
+                           SOCKET sock, 
+                           sockaddr_in sockAddr,
+                           int port, 
+                           char* socketName) {
+  createSocket(sock);
+  setupProtocols(&sockAddr, port);
+  connectSocket(sock, sockAddr, socketName);
+  bindToSocket(sock, sockAddr);
+  listenForConnections(sock);
+  acceptConnection(listenSock, sock, sockAddr);
+}
 
 
 
@@ -115,32 +83,62 @@ void createSocket(SOCKET sock)
 
 
 
-
-void setupProtocols(sockaddr_in *addr) 
+void setupProtocols(sockaddr_in *addr, int port) 
 {
-    memset(addr, 0, sizeof(addr));
-    addr->sin_addr.s_addr = inet_addr("192.168.1.4");
-    addr->sin_family = AF_INET;
-    addr->sin_port = htons(PORT);
-    printf("\n>> Protocols created.");
+  memset(addr, 0, sizeof(addr));
+  addr->sin_addr.s_addr = inet_addr("192.168.1.4");
+  addr->sin_family = AF_INET;
+  addr->sin_port = htons(port);
+  printf("\n>> Protocols created.");
 }
 
 
 
 
 
-
-void connectSocket(SOCKET socket, sockaddr_in sockAddr, char* socketName) 
+void connectSocket(SOCKET sock, sockaddr_in sockAddr, char* socketName) 
 {
-
-
-  if((connect(socket, (sockaddr*)&sockAddr, sizeof(sockaddr))) < 0)
+  if((connect(sock, (sockaddr*)&sockAddr, sizeof(sockaddr))) < 0)
   {
     printf("\n>> Could not connect with MAIN_SERVER, Error: %d", errno);
     printf("\nbefore connect in function");
     exit(1);
   }
   printf("\n>> %s connected", socketName);
+}
+
+
+
+
+
+void bindToSocket(SOCKET sock, sockaddr_in sockAddr) 
+{
+	if (bind(sock, (sockaddr*)&sockAddr, sizeof(sockAddr)) < 0)
+		printf("\nBind failed with error code: %d", errno);
+}
+
+
+
+
+
+void listenForConnections(SOCKET sock) 
+{
+	if(listen(sock, 1) < 0)
+  {
+    printf("\n>> Failed to listen. Exiting...");
+    exit(1);
+  }
+	printf("\n>> Waiting for incoming connections...");
+}
+
+
+
+
+
+void acceptConnection(SOCKET listenSock, SOCKET sock, sockaddr_in sockAddr) 
+{
+	static int c = sizeof(sockAddr);
+	sock = accept(listenSock, (sockaddr*)&sockAddr, &c);
 }
 
 
@@ -288,4 +286,44 @@ void setupMouseDriver()
   ioctl(fd, UI_DEV_CREATE);
 
   printf("\n>> Mouse driver created.");
+}
+
+
+
+
+int main(int argc, char* argv[]) 
+{                                        
+  
+  system("clear");
+  
+  
+  setupDrivers();
+  
+
+  createSocket(keyboardSocket);
+  createSocket(mouseSocket);
+  createSocket(signalSocket);
+
+
+  setupProtocols(&mouseSvr,    5600);
+  setupProtocols(&keyboardSvr, 5601);
+  setupProtocols(&signalSvr,   5602);
+ 
+    
+    
+  connectSocket(mouseSocket,    svr, "mouseSocket");
+  connectSocket(keyboardSocket, svr, "keyboardSocket");
+  connectSocket(signalSocket,   svr, "signalSocket");
+    
+    
+  pthread_create(&keyThread,    NULL, &receivingKey,    NULL);
+  pthread_create(&mouseThread,  NULL, &receivingMouse,  NULL);
+  pthread_create(&signalThread, NULL, &receivingSignal, NULL);
+  
+  
+  pthread_join(keyThread,    NULL);
+  pthread_join(signalThread, NULL);
+  pthread_join(mouseThread,  NULL);
+    
+  return 0;
 }
