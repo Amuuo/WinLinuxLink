@@ -45,14 +45,16 @@ int fd;
 
 
 void* receivingMouse();
-void  createSocket();
+void  createSocket(SOCKET);
 void  setupProtocols(sockaddr_in*, unsigned short);
-void  connectSocket();
+void  connectSocket(SOCKET, sockaddr_in, char*);
 void  emit(uint16_t,uint16_t,int32_t);
 void* receivingKey();
 void* receivingSignal();
 void* receivingMouse();
-void  setupDriver();
+void  setupDrivers();
+void  setupKeyboardDriver();
+void  setupMouseDriver();
 
 
 
@@ -61,46 +63,59 @@ void  setupDriver();
 //=================================================================
 int main(int argc, char* argv[]) 
 {                                        
-    system("clear");
-    setupDriver();    
-    createSocket();
-    setupProtocols(&keyboardAddr, 5600);
-    setupProtocols(&mouseAddr, 5601);
-    setupProtocols(&signalAddr, 5508);
-    connectSocket();
-    pthread_create(&keyThread, NULL, &receivingKey, NULL);
-    pthread_create(&mouseThread, NULL, &receivingMouse, NULL);
-    pthread_create(&signalThread, NULL, &receivingSignal, NULL);
-    pthread_join(keyThread, NULL);
-    pthread_join(signalThread, NULL);
-    pthread_join(mouseThread, NULL);
+  
+  system("clear");
+  
+  
+  setupDrivers();
+  
+
+  createSocket(keyboardSocket);
+  createSocket(mouseSocket);
+  createSocket(signalSocket);
+
+
+  setupProtocols(&keyboardAddr, 5600);
+  setupProtocols(&mouseAddr,    5601);
+  setupProtocols(&signalAddr,   5508);
     
-    return 0;
+    
+  connectSocket(mouseSocket,    mouseAddr,    "mouseSocket");
+  connectSocket(keyboardSocket, keyboardAddr, "keyboardSocket");
+  connectSocket(signalSocket,   signalAddr,   "signalSocket");
+    
+    
+  pthread_create(&keyThread,    NULL, &receivingKey,    NULL);
+  pthread_create(&mouseThread,  NULL, &receivingMouse,  NULL);
+  pthread_create(&signalThread, NULL, &receivingSignal, NULL);
+  
+  
+  pthread_join(keyThread,    NULL);
+  pthread_join(signalThread, NULL);
+  pthread_join(mouseThread,  NULL);
+    
+  return 0;
 }//================================================================
 
-void createSocket() 
+
+
+
+
+
+void createSocket(SOCKET sock) 
 {
-
-    if ((keyboardSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
-    {
-        printf("\n>> Count not create socket : \n");
-        exit(1);
-    }
-    if ((mouseSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
-    {
-        printf("\n>> Count not create socket : \n");
-        exit(1);
-    }
-    if ((signalSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
-    {
-        printf("\n>> Count not create socket : \n");
-        exit(1);
-    }
-    printf("\n>> Socket created.");
-
-    return;
+  if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
+  {
+    printf("\n>> Count not create socket : \n");
+    exit(1);
+  }
+  return;
 }
-//================================================================
+
+
+
+
+
 
 void setupProtocols(sockaddr_in *addr, unsigned short port) 
 {
@@ -110,111 +125,96 @@ void setupProtocols(sockaddr_in *addr, unsigned short port)
     addr->sin_port = htons(port);
     printf("\n>> Protocols created.");
 }
-//================================================================
 
-void connectSocket() 
+
+
+
+
+
+void connectSocket(SOCKET socket, sockaddr_in sockAddr, char* socketName) 
 {
-    if((connect(mouseSocket, (sockaddr*)&mouseAddr, sizeof(sockaddr))) < 0)
-    {
-        printf("\n>> Could not connect with MAIN_SERVER, Error: %d", errno);
-        printf("\nbefore connect in function");
-        exit(1);
-    }
-    //usleep(500);
-    printf("\n>> mouseSocket connected");
-    if((connect(keyboardSocket, (sockaddr*)&keyboardAddr, sizeof(sockaddr))) < 0) 
-    {
-        printf("\n>> Could not connect with MAIN_SERVER, Error: %d", errno);
-        printf("\nbefore connect in function");
-        exit(1);
-    }
-    //usleep(500);
-    printf("\n>> keyboardSocket connected");
-    if((connect(signalSocket, (sockaddr*)&signalAddr, sizeof(sockaddr))) < 0) 
-    {
-        printf("\n>> Could not connect with MAIN_SERVER, Error: %d", errno);
-        printf("\nbefore connect in function");
-        exit(1);
-    }
 
-    printf("\n>> signalSocket connected");
-    //printf("\n>> Socket connected\n\n");
-    //printf("\n>> keyboardSocket: %d, signalSocket: %d", keyboardSocket, signalSocket);
+
+  if((connect(socket, (sockaddr*)&sockAddr, sizeof(sockaddr))) < 0)
+  {
+    printf("\n>> Could not connect with MAIN_SERVER, Error: %d", errno);
+    printf("\nbefore connect in function");
+    exit(1);
+  }
+  printf("\n>> %s connected", socketName);
 }
-//================================================================
+
+
+
+
+
 
 void* receivingSignal()
 {   
-    uint8_t signalCode;
+  uint8_t signalCode;
     
-    while(1)
+  while(1)
+  {
+    recv(signalSocket, (uint8_t*)&signalCode, 1, 0);
+    if(signalCode == SIGINT)
     {
-        recv(signalSocket, (uint8_t*)&signalCode, 1, 0);
-        if(signalCode == SIGINT)
-        {
-            close(keyboardSocket);
-            close(signalSocket);   
-            close(mouseSocket);                     
-            exit(1);
-        }
+      close(keyboardSocket);
+      close(signalSocket);   
+      close(mouseSocket);                     
+      exit(1);
     }
+  }
 }
-//================================================================
+
+
+
+
+
 
 void* receivingMouse()
 {
 
-    int8_t mouseData[2];
-    while(1)
-    {
-        recv(mouseSocket, (int8_t*)mouseData, 2, 0);
-        emit(EV_KEY, REL_X, mouseData[0]);
-        emit(EV_KEY, REL_Y, mouseData[1]);
-        emit(EV_SYN, SYN_REPORT, 0);
-    }
+  int8_t mouseData[2];
+  while(1)
+  {
+    recv(mouseSocket, (int8_t*)mouseData, 2, 0);
+    emit(EV_KEY, REL_X, mouseData[0]);
+    emit(EV_KEY, REL_Y, mouseData[1]);
+    emit(EV_SYN, SYN_REPORT, 0);
+  }
 }
+
+
+
+
+
 
 void* receivingKey() 
 {   
-    uint16_t data;
+  uint16_t data;
 
-	while(1) 
+  while(1) 
   {
-        recv(keyboardSocket, (uint16_t*)&data, 2, 0);  
-        //printf("\ndata: %x", data);
+    recv(keyboardSocket, (uint16_t*)&data, 2, 0);  
         
-        switch(data&0x1000)
-        {        
-            case KEYUP:      emit(EV_KEY, data & 0xff, 1);         break;
-            case KEYDOWN:    emit(EV_KEY, data & 0xff, 0);         break;
-            case RMB:        emit(EV_KEY, BTN_RIGHT, (data>>1) & 0x01); break;
-            case LMB:        emit(EV_KEY, BTN_LEFT,  data & 0x01); break;
-            case WHEELUP:    emit(EV_REL, REL_WHEEL,  2);          break;
-            case WHEELDOWN:  emit(EV_KEY, REL_WHEEL, -2);          break;
-        }
+    switch(data&0x1000)
+    {        
+      case KEYUP:      emit(EV_KEY, data & 0xff, 1);              break;
+      case KEYDOWN:    emit(EV_KEY, data & 0xff, 0);              break;
+      case RMB:        emit(EV_KEY, BTN_RIGHT, (data>>1) & 0x01); break;
+      case LMB:        emit(EV_KEY, BTN_LEFT,  data & 0x01);      break;
+      case WHEELUP:    emit(EV_REL, REL_WHEEL,  2);               break;
+      case WHEELDOWN:  emit(EV_KEY, REL_WHEEL, -2);               break;
+    }
+  } 
+}
 
-        /*if(wInput.kData != 0) {
-            if      (wInput.kData & 0x8000) emit(EV_KEY, wInput.kData & 0xff, 1);
-            else if (wInput.kData & 0x4000) emit(EV_KEY, wInput.kData & 0xff, 0);
-        }
-        
-        emit(EV_KEY, BTN_LEFT, wInput.mData[0] & 0x1);
-		emit(EV_KEY, BTN_RIGHT, (wInput.mData[0] >> 1) & 0x1);
-		emit(EV_REL, REL_X, wInput.mData[1]);
-		emit(EV_REL, REL_Y, wInput.mData[2]);
-        
-        if      (wInput.mWheel == 0x88) emit(EV_REL, REL_WHEEL, -2);
-        else if (wInput.mWheel == 0x78) emit(EV_REL, REL_WHEEL, 2);
-        */
-        
 
-        //memset(&wInput, 0, sizeInput);
-	} 
-}//================================================================
+
+
 
 void emit(uint16_t type, uint16_t code, int32_t val)
 {
-    pthread_mutex_lock(&mutx);
     struct input_event event;
     static int eventSize = sizeof(event);
     
@@ -224,6 +224,7 @@ void emit(uint16_t type, uint16_t code, int32_t val)
     event.time.tv_sec = 0;
     event.time.tv_usec = 0;
 
+    pthread_mutex_lock(&mutx);
     write(fd, &event, eventSize);
     emit(EV_SYN, SYN_REPORT, 0);
     pthread_mutex_unlock(&mutx);
@@ -231,13 +232,25 @@ void emit(uint16_t type, uint16_t code, int32_t val)
 
 }//================================================================
 
-void setupDriver()
+
+
+
+
+void setupDrivers() 
+{
+  fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
+  setupKeyboardDriver();
+  setupMouseDriver();
+}
+
+
+
+
+
+void setupKeyboardDriver()
 {    
     int i;
     struct uinput_setup keyboardSetup;   
-    struct uinput_setup mouseSetup;
-    
-    fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 
     for(i = 1; i < 120; ++i) 
         ioctl(fd, UI_SET_KEYBIT, i);
@@ -249,18 +262,28 @@ void setupDriver()
     
 
     printf("\n>> Keyboard driver created.");
+        
+}
+
+
+
+
+
+void setupMouseDriver() 
+{
+  struct uinput_setup mouseSetup;
+  
     
-    ioctl(fd, UI_SET_KEYBIT, BTN_LEFT);
-    ioctl(fd, UI_SET_KEYBIT, BTN_RIGHT);
-    ioctl(fd, UI_SET_EVBIT, EV_REL);
-    ioctl(fd, UI_SET_RELBIT, REL_X);
-    ioctl(fd, UI_SET_RELBIT, REL_Y);
-    ioctl(fd, UI_SET_RELBIT, REL_WHEEL);
+  ioctl(fd, UI_SET_KEYBIT, BTN_LEFT);
+  ioctl(fd, UI_SET_KEYBIT, BTN_RIGHT);
+  ioctl(fd, UI_SET_EVBIT, EV_REL);
+  ioctl(fd, UI_SET_RELBIT, REL_X);
+  ioctl(fd, UI_SET_RELBIT, REL_Y);
+  ioctl(fd, UI_SET_RELBIT, REL_WHEEL);
 
-    strcpy(mouseSetup.name, "WindowsKeyboard");
-    ioctl(fd, UI_DEV_SETUP, &mouseSetup);
-    ioctl(fd, UI_DEV_CREATE);
+  strcpy(mouseSetup.name, "WindowsMouse");
+  ioctl(fd, UI_DEV_SETUP, &mouseSetup);
+  ioctl(fd, UI_DEV_CREATE);
 
-    printf("\n>> Mouse driver created.");
-
+  printf("\n>> Mouse driver created.");
 }
