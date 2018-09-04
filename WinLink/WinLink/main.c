@@ -38,9 +38,9 @@ pthread_t keyThread;
 pthread_t mouseThread;
 pthread_mutex_t mutx = PTHREAD_MUTEX_INITIALIZER;
 
-SOCKET keyboardSocket;
-SOCKET signalSocket;
-SOCKET mouseSocket;
+SOCKET keyboardClientSocket;
+SOCKET signalClientSocket;
+SOCKET mouseClientSocket;
 SOCKET keyboardListenSock;
 SOCKET signalListenSock;
 SOCKET mouseListenSock;
@@ -55,7 +55,7 @@ int fd;
 typedef struct {
 
   SOCKET*      listenSock;
-  SOCKET*      sock;
+  SOCKET*      clientSock;
   sockaddr_in* sockAddr;
   int          port;
   char*        socketName;
@@ -74,7 +74,7 @@ void print_args(argStruct* args) {
   pthread_mutex_lock(&mutx);
   
   printf("\n\n%10s : %d, %d", "listenSock", args->listenSock, *args->listenSock);
-  printf("\n%10s : %d, %d", "sock", args->sock, *args->sock);
+  printf("\n%10s : %d, %d", "clientSock", args->clientSock, *args->clientSock);
   printf("\n%10s : %d, %d", "sockAddr", args->sockAddr, *args->sockAddr);
   printf("\n%10s : %d", "port", args->port);
   printf("\n%10s : %s\n", "name", args->socketName);
@@ -86,7 +86,7 @@ void print_args(argStruct* args) {
 
 void createSocket(argStruct* args) 
 {
-  if ((*args->sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
+  if ((*args->listenSock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
   {
     printf("\n>> Count not create socket : \n");
     pthread_exit(1);
@@ -106,33 +106,21 @@ void setupProtocols(argStruct* args)
 }
 
 
-void connectSocket(argStruct* args) 
-{
-  if((connect(*args->sock, (sockaddr*)args->sockAddr, sizeof(sockaddr))) < 0)
-  {
-    printf("\n>> Could not connect with MAIN_SERVER, Error: %d", errno);
-    printf("\nbefore connect in function");
-    pthread_exit(1);
-  }
-  printf("\n>> %s connected", args->socketName);
-}
-
-
 void bindToSocket(argStruct* args) 
 {
-  if ((bind(*args->sock, (sockaddr*)args->sockAddr, sizeof(sockaddr))) < 0) 
+  if ((bind(*args->listenSock, (sockaddr*)args->sockAddr, sizeof(sockaddr))) < 0) 
   {  
 		printf("\nBind failed with error code: %d", errno);
     pthread_exit(1);
   }
-  printf("\nBound to socket %d", *args->sock);
+  printf("\nBound to socket %d", *args->clientSock);
 
 }
 
 
 void listenForConnections(argStruct* args) 
 {
-	if((listen(*args->sock, 1)) < 0)
+	if((listen(*args->listenSock, 1)) < 0)
   {
     printf("\n>> Failed to listen. Exiting...");
     pthread_exit(1);
@@ -143,8 +131,9 @@ void listenForConnections(argStruct* args)
 
 void acceptConnection(argStruct* args) 
 {
-	static int c = sizeof(sockaddr);
-	*args->sock = accept(*args->listenSock, (sockaddr*)args->sockAddr, &c);
+	static int c = sizeof(sockaddr_in);
+	*args->clientSock = accept(*args->listenSock, (sockaddr*)args->sockAddr, &c);
+  printf("\nClient accepted: clientSock: %d", *args->listenSock);
 }
 
 
@@ -159,11 +148,12 @@ void* setupSocketConnection(void* argsPtr) {
   createSocket(args);
   
   print_args(args);
-  
-  connectSocket(args);
+
   bindToSocket(args);
   listenForConnections(args);
   acceptConnection(args);
+
+  print_args(args);
 
 }
 
@@ -200,12 +190,12 @@ void* receivingSignal()
     
   while(1)
   {
-    recv(signalSocket, (uint8_t*)&signalCode, 1, 0);
+    recv(signalClientSocket, (uint8_t*)&signalCode, 1, 0);
     if(signalCode == SIGINT)
     {
-      close(keyboardSocket);
-      close(signalSocket);   
-      close(mouseSocket);                     
+      close(keyboardClientSocket);
+      close(signalClientSocket);   
+      close(mouseClientSocket);                     
       exit(1);
     }
   }
@@ -224,7 +214,7 @@ void* receivingMouse()
   while(1)
   {
     memset(mouseData, 0, 2);
-    recv(mouseSocket, (int16_t*)mouseData, 2, 0);
+    recv(mouseClientSocket, (int16_t*)mouseData, 2, 0);
     
     switch(*mouseData & 0xf000) 
     {
@@ -276,7 +266,7 @@ void* receivingKey()
 
   while(1) 
   {
-    recv(keyboardSocket, (uint16_t*)&keyData, 2, 0);  
+    recv(keyboardClientSocket, (uint16_t*)&keyData, 2, 0);  
         
     switch(keyData&0xf000)
     {        
@@ -376,19 +366,19 @@ int main(int argc, char* argv[])
   setupDrivers();
 
   argStruct keyboardArgs = (argStruct){&keyboardListenSock, 
-                                      &keyboardSocket, 
+                                      &keyboardClientSocket, 
                                       &keyboardAddr, 
                                       5600, 
                                       "keyboardSock"};
 
   argStruct mouseArgs= (argStruct){&mouseListenSock, 
-                                   &mouseSocket, 
+                                   &mouseClientSocket, 
                                    &mouseAddr, 
                                    5601, 
                                    "mouseSock"};
 
   argStruct signalArgs = (argStruct){&signalListenSock, 
-                                     &signalSocket, 
+                                     &signalClientSocket, 
                                      &signalAddr,
                                      5602, 
                                      "signalSock"};

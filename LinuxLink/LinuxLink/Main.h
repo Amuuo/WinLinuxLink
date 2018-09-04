@@ -101,8 +101,12 @@ void initializeConnection(HWND hwnd)
       
   initializeWinsock();	
   mouseStruct.setupAndConnectSocket();
+
+  Sleep(1000);
 	keyboardStruct.setupAndConnectSocket();
+  Sleep(1000);
   signalStruct.setupAndConnectSocket();
+  Sleep(1000);
 
 
   GetClientRect(hwnd, &clientRect);

@@ -1,8 +1,0 @@
-
-lmbDown: 5000
-lmbUP: 4000
-keydown: 0
-keydown: 0
-keyup: 8000
-keyup: 8000
-keydown: 0
