@@ -33,19 +33,19 @@ public:
 
   void setupSocketProtocols() 
   {      
-	  memset(&addr, 0, sizeof(SOCKADDR_IN));
-	  addr.sin_addr.s_addr  = inet_addr("192.168.1.4");
-	  addr.sin_family       = AF_INET;
-	  addr.sin_port         = htons(port);
+    memset(&addr, 0, sizeof(SOCKADDR_IN));
+    addr.sin_addr.s_addr  = inet_addr("192.168.1.4");
+    addr.sin_family       = AF_INET;
+    addr.sin_port         = htons(port);
     printf("\n>> Protocols established...");
   }
   
   
   void createSocket() 
   {
-	  if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
-		  printf("\n>> Count not create socket : \n");
+	    printf("\n>> Count not create socket : \n");
     }
     printf("\n>> Connected to Socket...");
   }

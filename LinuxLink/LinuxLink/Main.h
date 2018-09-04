@@ -14,7 +14,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 
 
-using namespace std;
+
 
 
 #ifndef HID_USAGE_PAGE_GENERIC
@@ -25,14 +25,14 @@ using namespace std;
 #endif
 
 #define MOUSEMOVE  0x1000
-#define RMBDOWN    0x2001
-#define RMBUP      0x2000
-#define KEYUP      0x3000
-#define KEYDOWN    0x4000
-#define LMBDOWN    0x5000
-#define LMBUP      0x5001
-#define WHEELUP    0x7000
-#define WHEELDOWN  0x8000
+#define RMB_UP     0x2000
+#define RMB_DOWN   0x3000
+#define LMB_UP     0x4000
+#define LMB_DOWN   0x5000
+#define WHEELUP    0x6000
+#define WHEELDOWN  0x7000
+#define KEYUP      0x8000
+#define KEYDOWN    0x9000
 
 
 
@@ -73,7 +73,9 @@ void sendKeyToLinux(uint16_t msg)
 }
 
 
-
+void sendMouseToLinux(uint16_t msg) {
+  send(mouseStruct.sock, (char*)msg, 2, 0);
+}
 
 
 void printDebug(std::string type, uint16_t msg_) 

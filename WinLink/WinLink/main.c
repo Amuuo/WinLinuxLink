@@ -18,12 +18,14 @@
 #include <ctype.h>
 
 #define MOUSEMOVE  0x1000
-#define RMB        0x2000
-#define KEYUP      0x3000
-#define KEYDOWN    0x4000
-#define LMB        0x5000
-#define WHEELUP    0x7000
-#define WHEELDOWN  0x8000
+#define RMB_UP     0x2000
+#define RMB_DOWN   0x3000
+#define LMB_UP     0x4000
+#define LMB_DOWN   0x5000
+#define WHEELUP    0x6000
+#define WHEELDOWN  0x7000
+#define KEYUP      0x8000
+#define KEYDOWN    0x9000
 
 typedef int SOCKET;
 typedef struct sockaddr_in sockaddr_in;
@@ -155,20 +157,50 @@ void* receivingSignal()
 
 void* receivingMouse()
 {
-
   int8_t mouseData[2];
+  
+
   while(1)
   {
-    recv(mouseSocket, (int8_t*)mouseData, 2, 0);
-    case(mouseData&)
-    emit(EV_KEY, REL_X, mouseData[0]);
-    emit(EV_KEY, REL_Y, mouseData[1]);
-    emit(EV_KEY, BTN_RIGHT, (data>>1) & 0x01);
-    emit(EV_KEY, BTN_LEFT,  data & 0x01);      
-    emit(EV_REL, REL_WHEEL,  2);               
-    emit(EV_KEY, REL_WHEEL, -2);               
+    memset(mouseData, 0, 2);
+    recv(mouseSocket, (int16_t*)mouseData, 2, 0);
     
-    emit(EV_SYN, SYN_REPORT, 0);
+    switch(*mouseData & 0xf000) 
+    {
+      case MOUSEMOVE:
+        emit(EV_KEY, REL_X, mouseData[0] &0x0f);
+        emit(EV_KEY, REL_Y, mouseData[1]);
+        break;
+      
+      case RMB_UP:
+        emit(EV_KEY, BTN_RIGHT, 0);
+        break;
+      
+      case RMB_DOWN:
+        emit(EV_KEY, BTN_RIGHT, 1);
+        break;
+
+      case LMB_UP:
+        emit(EV_KEY, BTN_LEFT, 0);
+        break;
+
+      case LMB_DOWN:
+        emit(EV_KEY, BTN_LEFT, 1);
+        break;
+
+      case WHEELUP:
+        emit(EV_REL, REL_WHEEL, 2);
+        break;
+
+      case WHEELDOWN:
+        emit(EV_REL, REL_WHEEL, -2);
+        break;
+
+      default:
+        break;
+    }
+            
+    emit(EV_SYN, SYN_REPORT, 0);  
   }
 }
 
@@ -179,18 +211,27 @@ void* receivingMouse()
 
 void* receivingKey() 
 {   
-  uint16_t data;
+  uint16_t keyData;
 
   while(1) 
   {
-    recv(keyboardSocket, (uint16_t*)&data, 2, 0);  
+    recv(keyboardSocket, (uint16_t*)&keyData, 2, 0);  
         
-    switch(data&0x1000)
+    switch(keyData&0xf000)
     {        
-      case KEYUP:   emit(EV_KEY, data & 0xff, 1); break;
-      case KEYDOWN: emit(EV_KEY, data & 0xff, 0); break;
+      case KEYDOWN: 
+        emit(EV_KEY, keyData & 0x00ff, 1); 
+        break;
+      
+      case KEYUP:   
+        emit(EV_KEY, keyData & 0x00ff, 0); 
+        break;
 
+      default:
+        break;
     }
+    
+    emit(EV_SYN, SYN_REPORT, 0);  
   } 
 }
 
@@ -238,7 +279,9 @@ void setupKeyboardDriver()
     struct uinput_setup keyboardSetup;   
 
     for(i = 1; i < 120; ++i) 
-        ioctl(fd, UI_SET_KEYBIT, i);
+    {
+      ioctl(fd, UI_SET_KEYBIT, i);
+    }
 
     ioctl(fd, UI_SET_EVBIT, EV_KEY);
     strcpy(keyboardSetup.name, "WindowsKeyboard");
@@ -247,7 +290,9 @@ void setupKeyboardDriver()
     
 
     printf("\n>> Keyboard driver created.");
-        
+
+    
+    sleep(1);        
 }
 
 
@@ -271,6 +316,9 @@ void setupMouseDriver()
   ioctl(fd, UI_DEV_CREATE);
 
   printf("\n>> Mouse driver created.");
+
+  
+  sleep(1);
 }
 
 
