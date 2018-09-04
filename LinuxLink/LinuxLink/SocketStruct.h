@@ -21,7 +21,7 @@ public:
   const char*   name;
   SOCKADDR_IN   addr{};
   SOCKET        sock{};
-  int           port{};
+  unsigned int  port{};
 
   void setupAndConnectSocket() 
   {

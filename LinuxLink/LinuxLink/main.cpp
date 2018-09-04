@@ -16,15 +16,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
   switch (Msg)
   {			
   
-  case WM_CREATE:
-    
+  case WM_CREATE: 
     fopen_s(&out, "data.txt", "w");
     initializeConnection(hwnd);
-		break;
+		
+    break;
     
     
-  case WM_INPUT:
-    
+  case WM_INPUT:   
     GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
       
     if (raw->header.dwType == RIM_TYPEMOUSE) 
@@ -33,96 +32,98 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
       mouseRel[1] = raw->data.mouse.lLastY;        
     }    
     sendMouseToLinux(*mouseRel&MOUSEMOVE);
+    
     break;
 
     
-  case WM_MOUSEWHEEL: 
-      
+  case WM_MOUSEWHEEL:    
     if (HIWORD(wParam) == 0x88) 
     {
       sendKeyToLinux(WHEELDOWN);
       printDebug("wheeldown", WHEELDOWN);
-    } else { 
+    } 
+    else 
+    { 
       sendKeyToLinux(WHEELUP); 
       printDebug("wheeldown", WHEELUP);
     } 
+    
     break;
 
     
-  case WM_LBUTTONDOWN: 
-    
+  case WM_LBUTTONDOWN:   
     sendKeyToLinux (LMB_DOWN); 
     printDebug("lmbDown", LMB_DOWN); 
+    
     break;
     
     
-  case WM_LBUTTONUP:   
-    
+  case WM_LBUTTONUP:     
     sendKeyToLinux (LMB_UP);   
     printDebug("lmbUP", LMB_UP); 
+    
     break;
     
     
-  case WM_RBUTTONDOWN: 
-   
+  case WM_RBUTTONDOWN:    
     sendKeyToLinux (RMB_DOWN); 
     printDebug("rmbDOWN", RMB_DOWN); 
+    
     break;
     
     
-  case WM_RBUTTONUP:   
-    
+  case WM_RBUTTONUP:       
     sendKeyToLinux (RMB_UP);   
     printDebug("rmbUP", RMB_UP); 
+    
     break;
     
     
-  case WM_KEYDOWN:     
-   
+  case WM_KEYDOWN:        
     sendKeyToLinux ((HIWORD(lParam)) & KEYDOWN); 
     printDebug("keydown", (HIWORD(lParam)) & KEYDOWN); 
+    
     break;
     
     
-  case WM_KEYUP:       
-    
+  case WM_KEYUP:           
     sendKeyToLinux (HIWORD(lParam) & KEYUP);         
     printDebug("keyup",(HIWORD(lParam)) & KEYUP);
+    
     break;
     
     
-  case WM_SYSKEYDOWN:  
-    
+  case WM_SYSKEYDOWN:      
     sendKeyToLinux ((HIWORD(lParam)) & KEYDOWN); 
     printDebug("keydown", (HIWORD(lParam)) & KEYDOWN); 
+    
     break;
     
     
-  case WM_SYSKEYUP:    
-   
+  case WM_SYSKEYUP:       
     sendKeyToLinux (HIWORD(lParam) & KEYUP);         
     printDebug("keyup", (HIWORD(lParam)) & KEYUP); 
+    
     break;
 
     
-  case WM_DESTROY:     
-    
+  case WM_DESTROY:         
     send(signalStruct.sock,(char*)"exit",4,0); 
     fclose(out);
     exit(1);
+    
     break;
     
     
-  case WM_CLOSE:       
-    
+  case WM_CLOSE:           
     send(signalStruct.sock, (char*)"exit", 4, 0); 
     fclose(out);
 		exit(1);
+    
     break;
     
     
-  default:             
-    
+  default:                
     return DefWindowProc(hwnd, Msg, wParam, lParam);
 	}	
 
