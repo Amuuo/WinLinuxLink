@@ -9,8 +9,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
   static BYTE lpb[40];
   static RAWINPUT* raw = (RAWINPUT*)lpb;
   static UINT dwSize = 40;
-  static int8_t mouseRel[2];
-
+  static int8_t mouseRel[4];
+  static int8_t testing[4];
   
   
   switch (Msg)
@@ -25,13 +25,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
     
   case WM_INPUT:   
     GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
-      
+    memset(mouseRel, 0, 4);
+    
     if (raw->header.dwType == RIM_TYPEMOUSE) 
     {        
-      mouseRel[0] = raw->data.mouse.lLastX;
-      mouseRel[1] = raw->data.mouse.lLastY;        
-    }    
-    sendMouseToLinux(*mouseRel&MOUSEMOVE);
+      mouseRel[2] = raw->data.mouse.lLastX;
+      mouseRel[3] = raw->data.mouse.lLastY;        
+    }  
+    *testing = (*mouseRel)+MOUSEMOVE;
+    sendMouseToLinux(testing);
     
     break;
 
@@ -80,22 +82,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
     
     
   case WM_KEYDOWN:        
-    sendKeyToLinux ((HIWORD(lParam)) & KEYDOWN); 
-    printDebug("keydown", (HIWORD(lParam)) & KEYDOWN); 
+    sendKeyToLinux ((HIWORD(lParam))+KEYDOWN); 
+    printDebug("keydown", (HIWORD(lParam))+KEYDOWN); 
     
     break;
     
     
   case WM_KEYUP:           
-    sendKeyToLinux (HIWORD(lParam) & KEYUP);         
-    printDebug("keyup",(HIWORD(lParam)) & KEYUP);
+    sendKeyToLinux (HIWORD(lParam)+KEYUP);         
+    printDebug("keyup",(HIWORD(lParam))+KEYUP);
     
     break;
     
     
   case WM_SYSKEYDOWN:      
-    sendKeyToLinux ((HIWORD(lParam)) & KEYDOWN); 
-    printDebug("keydown", (HIWORD(lParam)) & KEYDOWN); 
+    sendKeyToLinux ((HIWORD(lParam))+KEYDOWN); 
+    printDebug("keydown", (HIWORD(lParam))+KEYDOWN); 
     
     break;
     

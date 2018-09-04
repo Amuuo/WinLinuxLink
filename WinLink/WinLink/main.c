@@ -17,15 +17,15 @@
 #include <sys/time.h>
 #include <ctype.h>
 
-#define MOUSEMOVE  0x1000
-#define RMB_UP     0x2000
-#define RMB_DOWN   0x3000
-#define LMB_UP     0x4000
-#define LMB_DOWN   0x5000
-#define WHEELUP    0x6000
-#define WHEELDOWN  0x7000
-#define KEYUP      0x8000
-#define KEYDOWN    0x9000
+#define MOUSEMOVE  0x10000000
+#define RMB_UP     0x20000000
+#define RMB_DOWN   0x30000000
+#define LMB_UP     0x40000000
+#define LMB_DOWN   0x50000000
+#define WHEELUP    0x60000000
+#define WHEELDOWN  0x70000000
+#define KEYUP      0x80000000
+#define KEYDOWN    0x90000000
 
 typedef int SOCKET;
 typedef struct sockaddr_in sockaddr_in;
@@ -186,11 +186,13 @@ void emit(uint16_t type, uint16_t code, int32_t val)
 
 void* receivingSignal()
 {   
+
+  printf("\n\n>> Receiving signal");
   uint8_t signalCode;
     
   while(1)
   {
-    recv(signalClientSocket, (uint8_t*)&signalCode, 1, 0);
+    recv(signalClientSocket, (uint8_t*)&signalCode, 4, 0);
     if(signalCode == SIGINT)
     {
       close(keyboardClientSocket);
@@ -208,19 +210,32 @@ void* receivingSignal()
 
 void* receivingMouse()
 {
-  int8_t mouseData[2];
+  int8_t mouseData[4];
   
+  printf("\n\n>> Receiving mouse data: hex: %x x: %d, y: %d", 
+           *mouseData,
+           mouseData[0]&0x0f, 
+           mouseData[1]);  
 
   while(1)
   {
-    memset(mouseData, 0, 2);
-    recv(mouseClientSocket, (int16_t*)mouseData, 2, 0);
-    
+    memset(mouseData, 0, 4);
+    recv(mouseClientSocket, (int8_t*)mouseData, 4, 0);
+    /*printf("\n\n>> Receiving mouse data: \nhex: %x \nx: %d, \ny: %d", 
+           mouseData,
+           mouseData[0], 
+           mouseData[1]);*/
+    printf("\n\nmouseData[0]: %d\nmouseData[1]: %d\nmouseData[2]: %d\nmouseData[3]: %d",
+           mouseData[0],
+           mouseData[1],
+           mouseData[2],
+           mouseData[3]);
+
     switch(*mouseData & 0xf000) 
     {
       case MOUSEMOVE:
-        emit(EV_KEY, REL_X, mouseData[0] &0x0f);
-        emit(EV_KEY, REL_Y, mouseData[1]);
+        emit(EV_KEY, REL_X, mouseData[0] &0x0001);
+        emit(EV_KEY, REL_Y, mouseData[1] &0x0001);
         break;
       
       case RMB_UP:
@@ -251,7 +266,7 @@ void* receivingMouse()
         break;
     }
             
-    emit(EV_SYN, SYN_REPORT, 0);  
+    //emit(EV_SYN, SYN_REPORT, 0);  
   }
 }
 
@@ -262,12 +277,15 @@ void* receivingMouse()
 
 void* receivingKey() 
 {   
-  uint16_t keyData;
+  
+  int32_t keyData;
+
+  printf("\n\n>> Receiving key: %x(%c)", keyData, keyData&0x00ff);
 
   while(1) 
   {
-    recv(keyboardClientSocket, (uint16_t*)&keyData, 2, 0);  
-        
+    recv(keyboardClientSocket, (int32_t*)&keyData, 4, 0);  
+    printf("\n\n>> Receiving key: %x(%c)", keyData, keyData&0x00ff);      
     switch(keyData&0xf000)
     {        
       case KEYDOWN: 
@@ -282,7 +300,7 @@ void* receivingKey()
         break;
     }
     
-    emit(EV_SYN, SYN_REPORT, 0);  
+    //emit(EV_SYN, SYN_REPORT, 0);  
   } 
 }
 
