@@ -35,62 +35,53 @@ using namespace std;
 
 //unsigned int port{5600};
 
-struct socket_struct{
-  
+struct socket_struct
+{ 
   socket_struct(){}
   socket_struct(const char* n, unsigned int p) : name{n}, port{p} {}
   
   const char*   name;
-  SOCKADDR_IN   svr{};
   SOCKADDR_IN   addr{};
   SOCKET        sock{};
-  SOCKET        listenSock{};
   int           port{};
 
-  void setupListen() {
+  void setupAndConnectSocket() 
+  {
     setupSocketProtocols();
+    createSocket();
     connectSocket();
-    bindToSocket();
-    listenForConnections();
   }
   
-  
-  void setupSocketProtocols() {      
-	  memset(&svr, 0, sizeof(SOCKADDR_IN));
-	  svr.sin_addr.s_addr  = inet_addr("192.168.1.4");
-	  svr.sin_family       = AF_INET;
-	  svr.sin_port         = htons(port);
+
+  void setupSocketProtocols() 
+  {      
+	  memset(&addr, 0, sizeof(SOCKADDR_IN));
+	  addr.sin_addr.s_addr  = inet_addr("192.168.1.4");
+	  addr.sin_family       = AF_INET;
+	  addr.sin_port         = htons(port);
     printf("\n>> Protocols established...");
   }
   
   
-  void connectSocket() {
+  void createSocket() 
+  {
 	  if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
 		  printf("\n>> Count not create socket : \n");
+    }
     printf("\n>> Connected to Socket...");
   }
-  
- 
-  
-  void bindToSocket() {
-	  if (bind(listenSock, (SOCKADDR*)&svr, sizeof(svr)) == SOCKET_ERROR)
-		  printf("\nBind failed with error code: %d", WSAGetLastError());
-  }
-  
-  void listenForConnections() {
-	  if(listen(listenSock, 1) < 0){
-      printf("\n>> Failed to listen. Exiting...");
-      exit(1);
+
+
+  void connectSocket() 
+  {
+    if ((connect(sock, (SOCKADDR*)&addr, sizeof(SOCKADDR))) < 0) 
+    {
+      printf("\n>> Could not connect socket");
     }
-	  printf("\n>> Waiting for incoming connections...");
   }
-
-  void acceptConnection() {
-	  static int c = sizeof(SOCKADDR_IN);
-	  sock = accept(listenSock, (SOCKADDR*)&addr, &c);
-  }
-
 };
+
 
 
 
@@ -109,20 +100,37 @@ HINSTANCE  hInst;
 
 
 
-void initializeWinsock() {	
+
+
+void initializeWinsock() 
+{	
 	if (WSAStartup(MAKEWORD(2, 2), &winSock) != 0)
+  {
 		printf("\nFailed to initialize");
+  }
   printf("\n>> Initialized Winsock...");
 }
 
-void sendKeyToLinux(uint16_t msg) {
+
+
+
+void sendKeyToLinux(uint16_t msg) 
+{
   send(keyboardStruct.sock, (char*)msg, 2, 0);  
 }
 
 
-void printDebug(std::string type, uint16_t msg_) {
+
+
+
+void printDebug(std::string type, uint16_t msg_) 
+{
   fprintf(out, "\n%s: %x", type.c_str(), msg_);
 }
+
+
+
+
 
 void initializeConnection(HWND hwnd) {
 
@@ -136,12 +144,9 @@ void initializeConnection(HWND hwnd) {
   ShowWindow  (hwnd, SW_SHOW);	    
       
   initializeWinsock();	
-  mouseStruct.setupListen();
-  mouseStruct.acceptConnection();
-	keyboardStruct.setupListen();
-  keyboardStruct.acceptConnection();
-  signalStruct.setupListen();
-  signalStruct.acceptConnection();    
+  mouseStruct.setupAndConnectSocket();
+	keyboardStruct.setupAndConnectSocket();
+  signalStruct.setupAndConnectSocket();
 
 
   GetClientRect(hwnd, &clientRect);

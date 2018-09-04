@@ -43,20 +43,35 @@ SOCKET keyboardListenSock;
 SOCKET signalListenSock;
 SOCKET mouseListenSock;
 
-sockaddr_in mouseSvr;
-sockaddr_in keyboardSvr;
-sockaddr_in signalSvr;
+sockaddr_in mouseAddr;
+sockaddr_in keyboardAddr;
+sockaddr_in signalAddr;
 
 int PORT{5600};
 int fd;
 
 
+const char* localIPAddress = "192.168.1.6";
+ 
 
-void setupSocketConnection(SOCKET listenSock, 
-                           SOCKET sock, 
-                           sockaddr_in sockAddr,
-                           int port, 
-                           char* socketName) {
+
+typedef struct {
+  SOCKET listenSock;
+  SOCKET sock;
+  sockaddr_in sockAddr;
+  int port;
+  char* socketName;
+}  argStruct;
+
+
+
+
+
+void* setupSocketConnection(SOCKET listenSock, 
+                            SOCKET sock, 
+                            sockaddr_in sockAddr,
+                            int port, 
+                            char* socketName) {
   createSocket(sock);
   setupProtocols(&sockAddr, port);
   connectSocket(sock, sockAddr, socketName);
@@ -86,7 +101,7 @@ void createSocket(SOCKET sock)
 void setupProtocols(sockaddr_in *addr, int port) 
 {
   memset(addr, 0, sizeof(addr));
-  addr->sin_addr.s_addr = inet_addr("192.168.1.4");
+  addr->sin_addr.s_addr = inet_addr(localIPAddress);
   addr->sin_family = AF_INET;
   addr->sin_port = htons(port);
   printf("\n>> Protocols created.");
@@ -291,6 +306,8 @@ void setupMouseDriver()
 
 
 
+
+
 int main(int argc, char* argv[]) 
 {                                        
   
@@ -304,18 +321,49 @@ int main(int argc, char* argv[])
   createSocket(mouseSocket);
   createSocket(signalSocket);
 
+  /*void* setupSocketConnection(SOCKET listenSock, 
+                            SOCKET sock, 
+                            sockaddr_in sockAddr,
+                            int port, 
+                            char* socketName)*/
 
-  setupProtocols(&mouseSvr,    5600);
-  setupProtocols(&keyboardSvr, 5601);
-  setupProtocols(&signalSvr,   5602);
- 
-    
-    
-  connectSocket(mouseSocket,    svr, "mouseSocket");
-  connectSocket(keyboardSocket, svr, "keyboardSocket");
-  connectSocket(signalSocket,   svr, "signalSocket");
-    
-    
+  argStruct keyboardArgs = (argStruct){keyboardListenSock, 
+                                      keyboardSocket, 
+                                      keyboardAddr, 
+                                      5600, 
+                                      "keyboardSock"};
+
+  argStruct mouseArgs= (argStruct){mouseListenSock, 
+                                   mouseSocket, 
+                                   mouseAddr, 
+                                   5601, 
+                                   "mouseSock"};
+
+  argStruct signalArgs = (argStruct){signalListenSock, 
+                                     signalSocket, 
+                                     signalAddr,
+                                     5602, 
+                                     "signalSock"};
+
+  
+  setupSocketConnection(&keyboardListenSock, 
+                        &keyboardSocket, 
+                        &keyboardAddr, 
+                        5600, 
+                        "keyboardSock");
+
+  setupSocketConnection(&mouseListenSock, 
+                        &mouseSocket, 
+                        &mouseAddr, 
+                        5601, 
+                        "mouseSock");
+
+  setupSocketConnection(&signalListenSock, 
+                        &signalSocket, 
+                        &signalAddr, 
+                        5602, 
+                        "signalSock");
+
   pthread_create(&keyThread,    NULL, &receivingKey,    NULL);
   pthread_create(&mouseThread,  NULL, &receivingMouse,  NULL);
   pthread_create(&signalThread, NULL, &receivingSignal, NULL);
