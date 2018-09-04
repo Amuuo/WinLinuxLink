@@ -39,14 +39,14 @@ pthread_mutex_t mutx = PTHREAD_MUTEX_INITIALIZER;
 SOCKET keyboardSocket;
 SOCKET signalSocket;
 SOCKET mouseSocket;
-sockaddr_in keyboardAddr, mouseAddr, signalAddr;
-int PORT;
+sockaddr_in svr;
+int PORT{5600};
 int fd;
 
 
 void* receivingMouse();
 void  createSocket(SOCKET);
-void  setupProtocols(sockaddr_in*, unsigned short);
+void  setupProtocols(sockaddr_in*);
 void  connectSocket(SOCKET, sockaddr_in, char*);
 void  emit(uint16_t,uint16_t,int32_t);
 void* receivingKey();
@@ -75,14 +75,13 @@ int main(int argc, char* argv[])
   createSocket(signalSocket);
 
 
-  setupProtocols(&keyboardAddr, 5600);
-  setupProtocols(&mouseAddr,    5601);
-  setupProtocols(&signalAddr,   5508);
+  setupProtocols(&svr);
+ 
     
     
-  connectSocket(mouseSocket,    mouseAddr,    "mouseSocket");
-  connectSocket(keyboardSocket, keyboardAddr, "keyboardSocket");
-  connectSocket(signalSocket,   signalAddr,   "signalSocket");
+  connectSocket(mouseSocket,    svr, "mouseSocket");
+  connectSocket(keyboardSocket, svr, "keyboardSocket");
+  connectSocket(signalSocket,   svr, "signalSocket");
     
     
   pthread_create(&keyThread,    NULL, &receivingKey,    NULL);
@@ -117,12 +116,12 @@ void createSocket(SOCKET sock)
 
 
 
-void setupProtocols(sockaddr_in *addr, unsigned short port) 
+void setupProtocols(sockaddr_in *addr) 
 {
     memset(addr, 0, sizeof(addr));
     addr->sin_addr.s_addr = inet_addr("192.168.1.4");
     addr->sin_family = AF_INET;
-    addr->sin_port = htons(port);
+    addr->sin_port = htons(PORT);
     printf("\n>> Protocols created.");
 }
 
@@ -178,8 +177,14 @@ void* receivingMouse()
   while(1)
   {
     recv(mouseSocket, (int8_t*)mouseData, 2, 0);
+    case(mouseData&)
     emit(EV_KEY, REL_X, mouseData[0]);
     emit(EV_KEY, REL_Y, mouseData[1]);
+    emit(EV_KEY, BTN_RIGHT, (data>>1) & 0x01);
+    emit(EV_KEY, BTN_LEFT,  data & 0x01);      
+    emit(EV_REL, REL_WHEEL,  2);               
+    emit(EV_KEY, REL_WHEEL, -2);               
+    
     emit(EV_SYN, SYN_REPORT, 0);
   }
 }
@@ -199,12 +204,9 @@ void* receivingKey()
         
     switch(data&0x1000)
     {        
-      case KEYUP:      emit(EV_KEY, data & 0xff, 1);              break;
-      case KEYDOWN:    emit(EV_KEY, data & 0xff, 0);              break;
-      case RMB:        emit(EV_KEY, BTN_RIGHT, (data>>1) & 0x01); break;
-      case LMB:        emit(EV_KEY, BTN_LEFT,  data & 0x01);      break;
-      case WHEELUP:    emit(EV_REL, REL_WHEEL,  2);               break;
-      case WHEELDOWN:  emit(EV_KEY, REL_WHEEL, -2);               break;
+      case KEYUP:   emit(EV_KEY, data & 0xff, 1); break;
+      case KEYDOWN: emit(EV_KEY, data & 0xff, 0); break;
+
     }
   } 
 }
