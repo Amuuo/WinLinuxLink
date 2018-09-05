@@ -24,15 +24,15 @@
 #define HID_USAGE_GENERIC_MOUSE ((USHORT) 0x02)
 #endif
 
-#define MOUSEMOVE  0x10000000
-#define RMB_UP     0x20000000
-#define RMB_DOWN   0x30000000
-#define LMB_UP     0x40000000
-#define LMB_DOWN   0x50000000
-#define WHEELUP    0x60000000
-#define WHEELDOWN  0x70000000
-#define KEYUP      0x80000000
-#define KEYDOWN    0x90000000
+#define MOUSEMOVE  0x10
+#define RMB_UP     0x20
+#define RMB_DOWN   0x30
+#define LMB_UP     0x40
+#define LMB_DOWN   0x50
+#define WHEELUP    0x60
+#define WHEELDOWN  0x70
+#define KEYUP      0x80
+#define KEYDOWN    0x90
 
 
 
@@ -67,9 +67,10 @@ void initializeWinsock()
 
 
 
-void sendKeyToLinux(int16_t msg) 
+void sendKeyToLinux(uint16_t msg) 
 {
-  send(keyboardStruct.sock, (char*)&msg, 4, 0);  
+  send(keyboardStruct.sock, (char*)&msg, 2, 0);  
+
 }
 
 

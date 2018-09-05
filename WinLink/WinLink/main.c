@@ -17,15 +17,15 @@
 #include <sys/time.h>
 #include <ctype.h>
 
-#define MOUSEMOVE  0x10000000
-#define RMB_UP     0x20000000
-#define RMB_DOWN   0x30000000
-#define LMB_UP     0x40000000
-#define LMB_DOWN   0x50000000
-#define WHEELUP    0x60000000
-#define WHEELDOWN  0x70000000
-#define KEYUP      0x80000000
-#define KEYDOWN    0x90000000
+#define MOUSEMOVE  0x10
+#define RMB_UP     0x20
+#define RMB_DOWN   0x30
+#define LMB_UP     0x40
+#define LMB_DOWN   0x50
+#define WHEELUP    0x60
+#define WHEELDOWN  0x70
+#define KEYUP      0x80
+#define KEYDOWN    0x90
 
 typedef int SOCKET;
 typedef struct sockaddr_in sockaddr_in;
@@ -165,20 +165,20 @@ void* setupSocketConnection(void* argsPtr) {
 
 void emit(uint16_t type, uint16_t code, int32_t val)
 {
-    struct input_event event;
-    static int eventSize = sizeof(event);
+  struct input_event event;
+  static int eventSize = sizeof(event);
     
-    event.type = type;
-    event.code = code;
-    event.value = val;
-    event.time.tv_sec = 0;
-    event.time.tv_usec = 0;
+  event.type = type;
+  event.code = code;
+  event.value = val;
+  event.time.tv_sec = 0;
+  event.time.tv_usec = 0;
 
-    pthread_mutex_lock(&mutx);
-    write(fd, &event, eventSize);
-    emit(EV_SYN, SYN_REPORT, 0);
-    pthread_mutex_unlock(&mutx);
-    //memset(&event, 0, eventSize);
+  pthread_mutex_lock(&mutx);
+  write(fd, &event, eventSize);
+  emit(EV_SYN, SYN_REPORT, 0);
+  pthread_mutex_unlock(&mutx);
+  memset(&event, 0, eventSize);
 
 }
 
@@ -212,60 +212,61 @@ void* receivingMouse()
 {
   int8_t mouseData[4];
   
-  printf("\n\n>> Receiving mouse data: hex: %x x: %d, y: %d", 
-           *mouseData,
-           mouseData[0]&0x0f, 
-           mouseData[1]);  
+printf("\n\n>> Receiving mouse data: hex: %x x: %d, y: %d", 
+       *mouseData,
+       mouseData[0], 
+       mouseData[1]);  
 
   while(1)
   {
-    memset(mouseData, 0, 4);
+    
     recv(mouseClientSocket, (int8_t*)mouseData, 4, 0);
     /*printf("\n\n>> Receiving mouse data: \nhex: %x \nx: %d, \ny: %d", 
-           mouseData,
-           mouseData[0], 
-           mouseData[1]);*/
+    mouseData,
+    mouseData[0], 
+    mouseData[1]);*/
     printf("\n\nmouseData[0]: %d\nmouseData[1]: %d\nmouseData[2]: %d\nmouseData[3]: %d",
            mouseData[0],
            mouseData[1],
            mouseData[2],
            mouseData[3]);
 
-    switch(*mouseData & 0xf000) 
+
+    switch(mouseData[0] & 0xf0) 
     {
-      case MOUSEMOVE:
-        emit(EV_KEY, REL_X, mouseData[0] &0x0001);
-        emit(EV_KEY, REL_Y, mouseData[1] &0x0001);
-        break;
+    case MOUSEMOVE:
+      emit(EV_KEY, REL_X, mouseData[2]&0x01);
+      emit(EV_KEY, REL_Y, mouseData[3]&0x01);
+      break;
       
-      case RMB_UP:
-        emit(EV_KEY, BTN_RIGHT, 0);
-        break;
+    case RMB_UP:
+      emit(EV_KEY, BTN_RIGHT, 0);
+      break;
       
-      case RMB_DOWN:
-        emit(EV_KEY, BTN_RIGHT, 1);
-        break;
+    case RMB_DOWN:
+      emit(EV_KEY, BTN_RIGHT, 1);
+      break;
 
-      case LMB_UP:
-        emit(EV_KEY, BTN_LEFT, 0);
-        break;
+    case LMB_UP:
+      emit(EV_KEY, BTN_LEFT, 0);
+      break;
 
-      case LMB_DOWN:
-        emit(EV_KEY, BTN_LEFT, 1);
-        break;
+    case LMB_DOWN:
+      emit(EV_KEY, BTN_LEFT, 1);
+      break;
 
-      case WHEELUP:
-        emit(EV_REL, REL_WHEEL, 2);
-        break;
+    case WHEELUP:
+      emit(EV_REL, REL_WHEEL, 2);
+      break;
 
-      case WHEELDOWN:
-        emit(EV_REL, REL_WHEEL, -2);
-        break;
+    case WHEELDOWN:
+      emit(EV_REL, REL_WHEEL, -2);
+      break;
 
-      default:
-        break;
+    default:
+      break;
     }
-            
+    memset(mouseData, 0, 4);        
     //emit(EV_SYN, SYN_REPORT, 0);  
   }
 }
@@ -278,29 +279,30 @@ void* receivingMouse()
 void* receivingKey() 
 {   
   
-  int32_t keyData;
+  uint16_t keyData;
 
-  printf("\n\n>> Receiving key: %x(%c)", keyData, keyData&0x00ff);
+  printf("\n\n>> Receiving key: %4x = %c", keyData, (char)keyData&0x00ff);
 
   while(1) 
   {
-    recv(keyboardClientSocket, (int32_t*)&keyData, 4, 0);  
-    printf("\n\n>> Receiving key: %x(%c)", keyData, keyData&0x00ff);      
+    //memset(keyData, 0, 2);
+    recv(keyboardClientSocket, (uint16_t*)&keyData, 2, 0);  
+    printf("\n\n>> Receiving key: %4x = %c", keyData, (char)keyData&0x00ff);      
     switch(keyData&0xf000)
     {        
-      case KEYDOWN: 
-        emit(EV_KEY, keyData & 0x00ff, 1); 
-        break;
+    case 0x8000: 
+      emit(EV_KEY, keyData & 0x00ff, 1); 
+      break;
       
-      case KEYUP:   
-        emit(EV_KEY, keyData & 0x00ff, 0); 
-        break;
+    case 0x4000:   
+      emit(EV_KEY, keyData & 0x00ff, 0); 
+      break;
 
-      default:
-        break;
+    default:
+      break;
     }
     
-    //emit(EV_SYN, SYN_REPORT, 0);  
+  //emit(EV_SYN, SYN_REPORT, 0);  
   } 
 }
 
@@ -309,24 +311,24 @@ void* receivingKey()
 
 void setupKeyboardDriver()
 {    
-    int i;
-    struct uinput_setup keyboardSetup;   
+  int i;
+  struct uinput_setup keyboardSetup;   
 
-    for(i = 1; i < 120; ++i) 
-    {
-      ioctl(fd, UI_SET_KEYBIT, i);
-    }
+  for(i = 1; i < 120; ++i) 
+  {
+    ioctl(fd, UI_SET_KEYBIT, i);
+  }
 
-    ioctl(fd, UI_SET_EVBIT, EV_KEY);
-    strcpy(keyboardSetup.name, "WindowsKeyboard");
-    ioctl(fd, UI_DEV_SETUP, &keyboardSetup);
-    ioctl(fd, UI_DEV_CREATE);
+  ioctl(fd, UI_SET_EVBIT, EV_KEY);
+  strcpy(keyboardSetup.name, "WindowsKeyboard");
+  ioctl(fd, UI_DEV_SETUP, &keyboardSetup);
+  ioctl(fd, UI_DEV_CREATE);
     
 
-    printf("\n>> Keyboard driver created.");
+  printf("\n>> Keyboard driver created.");
 
     
-    sleep(1);        
+  sleep(1);        
 }
 
 
