@@ -63,16 +63,13 @@ typedef struct {
 }  argStruct;
 
 
-
 const char* localIPAddress = "192.168.1.6";
- 
-
 
 
 void print_args(argStruct* args) {
-  
+
   pthread_mutex_lock(&mutx);
-  
+
   printf("\n\n%10s : %d, %d", "listenSock", args->listenSock, *args->listenSock);
   printf("\n%10s : %d, %d", "clientSock", args->clientSock, *args->clientSock);
   printf("\n%10s : %d, %d", "sockAddr", args->sockAddr, *args->sockAddr);
@@ -84,9 +81,9 @@ void print_args(argStruct* args) {
 
 
 
-void createSocket(argStruct* args) 
+void createSocket(argStruct* args)
 {
-  if ((*args->listenSock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
+  if ((*args->listenSock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
   {
     printf("\n>> Count not create socket : \n");
     pthread_exit(1);
@@ -96,7 +93,7 @@ void createSocket(argStruct* args)
 }
 
 
-void setupProtocols(argStruct* args) 
+void setupProtocols(argStruct* args)
 {
   memset(args->sockAddr, 0, sizeof(sockaddr_in));
   args->sockAddr->sin_addr.s_addr = inet_addr(localIPAddress);
@@ -106,10 +103,10 @@ void setupProtocols(argStruct* args)
 }
 
 
-void bindToSocket(argStruct* args) 
+void bindToSocket(argStruct* args)
 {
-  if ((bind(*args->listenSock, (sockaddr*)args->sockAddr, sizeof(sockaddr))) < 0) 
-  {  
+  if ((bind(*args->listenSock, (sockaddr*)args->sockAddr, sizeof(sockaddr))) < 0)
+  {
 		printf("\nBind failed with error code: %d", errno);
     pthread_exit(1);
   }
@@ -118,7 +115,7 @@ void bindToSocket(argStruct* args)
 }
 
 
-void listenForConnections(argStruct* args) 
+void listenForConnections(argStruct* args)
 {
 	if((listen(*args->listenSock, 1)) < 0)
   {
@@ -129,7 +126,7 @@ void listenForConnections(argStruct* args)
 }
 
 
-void acceptConnection(argStruct* args) 
+void acceptConnection(argStruct* args)
 {
 	static int c = sizeof(sockaddr_in);
 	*args->clientSock = accept(*args->listenSock, (sockaddr*)args->sockAddr, &c);
@@ -138,15 +135,13 @@ void acceptConnection(argStruct* args)
 
 
 void* setupSocketConnection(void* argsPtr) {
-  
-  argStruct* args = (argStruct*)argsPtr;
-  
-  printf("\n>> Setting up %s on port %i", args->socketName, args->port);
-  
 
-  setupProtocols(args);  
+  argStruct* args = (argStruct*)argsPtr;
+
+  printf("\n>> Setting up %s on port %i", args->socketName, args->port);
+
+  setupProtocols(args);
   createSocket(args);
-  
   print_args(args);
 
   bindToSocket(args);
@@ -167,7 +162,7 @@ void emit(uint16_t type, uint16_t code, int32_t val)
 {
   struct input_event event;
   static int eventSize = sizeof(event);
-    
+
   event.type = type;
   event.code = code;
   event.value = val;
@@ -185,19 +180,19 @@ void emit(uint16_t type, uint16_t code, int32_t val)
 
 
 void* receivingSignal()
-{   
+{
 
   printf("\n\n>> Receiving signal");
   uint8_t signalCode;
-    
+
   while(1)
   {
     recv(signalClientSocket, (uint8_t*)&signalCode, 4, 0);
     if(signalCode == SIGINT)
     {
       close(keyboardClientSocket);
-      close(signalClientSocket);   
-      close(mouseClientSocket);                     
+      close(signalClientSocket);
+      close(mouseClientSocket);
       exit(1);
     }
   }
@@ -211,19 +206,19 @@ void* receivingSignal()
 void* receivingMouse()
 {
   int8_t mouseData[4];
-  
-printf("\n\n>> Receiving mouse data: hex: %x x: %d, y: %d", 
-       *mouseData,
-       mouseData[0], 
-       mouseData[1]);  
+
+  printf("\n\n>> Receiving mouse data: hex: %x x: %d, y: %d", 
+         *mouseData,
+         mouseData[0],
+         mouseData[1]);
 
   while(1)
   {
-    
+
     recv(mouseClientSocket, (int8_t*)mouseData, 4, 0);
-    /*printf("\n\n>> Receiving mouse data: \nhex: %x \nx: %d, \ny: %d", 
+    /*printf("\n\n>> Receiving mouse data: \nhex: %x \nx: %d, \ny: %d",
     mouseData,
-    mouseData[0], 
+    mouseData[0],
     mouseData[1]);*/
     printf("\n\nmouseData[0]: %d\nmouseData[1]: %d\nmouseData[2]: %d\nmouseData[3]: %d",
            mouseData[0],
@@ -232,17 +227,17 @@ printf("\n\n>> Receiving mouse data: hex: %x x: %d, y: %d",
            mouseData[3]);
 
 
-    switch(mouseData[0] & 0xf0) 
+    switch(mouseData[0] & 0xf0)
     {
     case MOUSEMOVE:
       emit(EV_KEY, REL_X, mouseData[2]&0x01);
       emit(EV_KEY, REL_Y, mouseData[3]&0x01);
       break;
-      
+
     case RMB_UP:
       emit(EV_KEY, BTN_RIGHT, 0);
       break;
-      
+
     case RMB_DOWN:
       emit(EV_KEY, BTN_RIGHT, 1);
       break;
@@ -266,8 +261,8 @@ printf("\n\n>> Receiving mouse data: hex: %x x: %d, y: %d",
     default:
       break;
     }
-    memset(mouseData, 0, 4);        
-    //emit(EV_SYN, SYN_REPORT, 0);  
+    memset(mouseData, 0, 4);
+    //emit(EV_SYN, SYN_REPORT, 0);
   }
 }
 
@@ -276,45 +271,44 @@ printf("\n\n>> Receiving mouse data: hex: %x x: %d, y: %d",
 
 
 
-void* receivingKey() 
-{   
-  
+void* receivingKey()
+{
   uint16_t keyData;
 
   printf("\n\n>> Receiving key: %4x = %c", keyData, (char)keyData&0x00ff);
 
-  while(1) 
+  while(1)
   {
     //memset(keyData, 0, 2);
-    recv(keyboardClientSocket, (uint16_t*)&keyData, 2, 0);  
-    printf("\n\n>> Receiving key: %4x = %c", keyData, (char)keyData&0x00ff);      
+    recv(keyboardClientSocket, (uint16_t*)&keyData, 2, 0);
+    printf("\n\n>> Receiving key: %4x = %c", keyData, (char)keyData&0x00ff);
     switch(keyData&0xf000)
-    {        
-    case 0x8000: 
-      emit(EV_KEY, keyData & 0x00ff, 1); 
+    {
+    case 0x8000:
+      emit(EV_KEY, keyData & 0x00ff, 1);
       break;
-      
-    case 0x4000:   
-      emit(EV_KEY, keyData & 0x00ff, 0); 
+
+    case 0x4000:
+      emit(EV_KEY, keyData & 0x00ff, 0);
       break;
 
     default:
       break;
     }
-    
-  //emit(EV_SYN, SYN_REPORT, 0);  
-  } 
+
+  //emit(EV_SYN, SYN_REPORT, 0);
+  }
 }
 
 
 
 
 void setupKeyboardDriver()
-{    
+{
   int i;
-  struct uinput_setup keyboardSetup;   
+  struct uinput_setup keyboardSetup;
 
-  for(i = 1; i < 120; ++i) 
+  for(i = 1; i < 120; ++i)
   {
     ioctl(fd, UI_SET_KEYBIT, i);
   }
@@ -323,20 +317,17 @@ void setupKeyboardDriver()
   strcpy(keyboardSetup.name, "WindowsKeyboard");
   ioctl(fd, UI_DEV_SETUP, &keyboardSetup);
   ioctl(fd, UI_DEV_CREATE);
-    
 
   printf("\n>> Keyboard driver created.");
 
-    
-  sleep(1);        
+  sleep(1);
 }
 
 
-void setupMouseDriver() 
+void setupMouseDriver()
 {
   struct uinput_setup mouseSetup;
-  
-    
+
   ioctl(fd, UI_SET_KEYBIT, BTN_LEFT);
   ioctl(fd, UI_SET_KEYBIT, BTN_RIGHT);
   ioctl(fd, UI_SET_EVBIT,  EV_REL);
@@ -350,13 +341,12 @@ void setupMouseDriver()
 
   printf("\n>> Mouse driver created.");
 
-  
   sleep(1);
 }
 
 
 
-void setupDrivers() 
+void setupDrivers()
 {
   fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
   setupKeyboardDriver();
@@ -377,53 +367,51 @@ void setupDrivers()
 
 
 
-int main(int argc, char* argv[]) 
-{                                        
-  
+int main(int argc, char* argv[])
+{
   system("clear");
-  
-  
+
   setupDrivers();
 
-  argStruct keyboardArgs = (argStruct){&keyboardListenSock, 
-                                      &keyboardClientSocket, 
-                                      &keyboardAddr, 
-                                      5600, 
+  argStruct keyboardArgs = (argStruct){&keyboardListenSock,
+                                      &keyboardClientSocket,
+                                      &keyboardAddr,
+                                      5600,
                                       "keyboardSock"};
 
-  argStruct mouseArgs= (argStruct){&mouseListenSock, 
-                                   &mouseClientSocket, 
-                                   &mouseAddr, 
-                                   5601, 
+  argStruct mouseArgs= (argStruct){&mouseListenSock,
+                                   &mouseClientSocket,
+                                   &mouseAddr,
+                                   5601,
                                    "mouseSock"};
 
-  argStruct signalArgs = (argStruct){&signalListenSock, 
-                                     &signalClientSocket, 
+  argStruct signalArgs = (argStruct){&signalListenSock,
+                                     &signalClientSocket,
                                      &signalAddr,
-                                     5602, 
+                                     5602,
                                      "signalSock"};
 
 
   print_args(&keyboardArgs);
   print_args(&mouseArgs);
   print_args(&signalArgs);
-  
+
   pthread_create (&keyThread,    NULL, &setupSocketConnection, &keyboardArgs);
   pthread_create (&mouseThread,  NULL, &setupSocketConnection, &mouseArgs);
   pthread_create (&signalThread, NULL, &setupSocketConnection, &signalArgs);
-                             
+
   pthread_join (keyThread,    NULL);
   pthread_join (mouseThread,  NULL);
   pthread_join (signalThread, NULL);
-  
+
   pthread_create (&keyThread,    NULL, &receivingKey,    NULL);
   pthread_create (&mouseThread,  NULL, &receivingMouse,  NULL);
   pthread_create (&signalThread, NULL, &receivingSignal, NULL);
-  
-  
+
+
   pthread_join (keyThread,    NULL);
   pthread_join (signalThread, NULL);
   pthread_join (mouseThread,  NULL);
-    
+
   return 0;
 }
