@@ -231,7 +231,7 @@ printf("\n\n>> Receiving mouse data: hex: %x x: %d, y: %d",
            mouseData[2],
            mouseData[3]);
 
-    printf("\nmouseData[0] & 0xf0: %d", mouseData[0] & 0xf0);
+   
 
     switch(mouseData[0] & 0xf0) 
     {
