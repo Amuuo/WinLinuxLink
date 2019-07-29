@@ -34,7 +34,7 @@ public:
   void setupSocketProtocols() 
   {      
     memset(&addr, 0, sizeof(SOCKADDR_IN));
-    addr.sin_addr.s_addr  = inet_addr("192.168.1.6");
+    addr.sin_addr.s_addr  = inet_addr("10.10.100.134");
     addr.sin_family       = AF_INET;
     addr.sin_port         = htons(port);
     printf("\n>> Protocols established...");

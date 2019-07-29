@@ -9,9 +9,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
   static BYTE lpb[40];
   static RAWINPUT* raw = (RAWINPUT*)lpb;
   static UINT dwSize = 40;
-  static int8_t mouseRel[4]{};
+  static int8_t mouseRel[4];
   static int8_t testing[4];
-  
+  static POINT mousePos;
+  static POINT lastMousePos;
   
   switch (Msg)
   {			
@@ -19,10 +20,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
   case WM_CREATE: 
     fopen_s(&out, "data.txt", "w");
     initializeConnection(hwnd);
-		
+    lastMousePos.x = 0;
+    lastMousePos.y = 0;
+    break;
+  
+
+  case WM_MOUSEMOVE:
+    GetCursorPos(&mousePos);
+    mouseRel[2] = mousePos.x - lastMousePos.x;
+    mouseRel[3] = mousePos.y - lastMousePos.y;
+    mouseRel[0] += MOUSEMOVE;
+    sendMouseToLinux(mouseRel);
+    lastMousePos = mousePos;
     break;
     
-    
+  /*
   case WM_INPUT:   
     GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
    
@@ -35,7 +47,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
       sendMouseToLinux(mouseRel);
     }      
     break;
-
+  */
     
   case WM_MOUSEWHEEL:    
     if (HIWORD(wParam) == 0x88) 

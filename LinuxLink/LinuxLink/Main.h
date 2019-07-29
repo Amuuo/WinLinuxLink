@@ -67,8 +67,7 @@ void initializeWinsock()
 
 
 
-void sendKeyToLinux(uint16_t msg) 
-{
+void sendKeyToLinux(uint16_t msg) {
   send(keyboardStruct.sock, (char*)&msg, 2, 0);  
 
 }
