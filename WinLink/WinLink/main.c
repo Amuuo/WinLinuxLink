@@ -226,7 +226,7 @@ void* receivingMouse()
            mouseData[2],
            mouseData[3]);
 
-   
+    printf("\nmouseData[0] & 0xf0: %d", mouseData[0] & 0xf0);
 
     switch(mouseData[0] & 0xf0)
     {
